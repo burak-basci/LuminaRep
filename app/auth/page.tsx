@@ -2,8 +2,8 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { signIn } from 'next-auth/react';
 import Link from 'next/link';
-import { signIn, signUp } from '@/lib/auth';
 
 export default function AuthPage() {
   const router = useRouter();
@@ -20,10 +20,43 @@ export default function AuthPage() {
 
     try {
       if (mode === 'signup') {
-        await signUp(email, password);
+        // Create account via API
+        const response = await fetch('/api/auth/signup', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password }),
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.error || 'Signup failed');
+        }
+
+        // Sign in after successful signup
+        const result = await signIn('credentials', {
+          email,
+          password,
+          redirect: false,
+        });
+
+        if (result?.error) {
+          throw new Error('Failed to sign in after signup');
+        }
+
         router.push('/dashboard');
       } else {
-        await signIn(email, password);
+        // Sign in
+        const result = await signIn('credentials', {
+          email,
+          password,
+          redirect: false,
+        });
+
+        if (result?.error) {
+          throw new Error('Invalid email or password');
+        }
+
         router.push('/dashboard');
       }
     } catch (err: any) {

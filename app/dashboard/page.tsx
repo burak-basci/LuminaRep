@@ -2,9 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { useSession, signOut } from 'next-auth/react';
 import Link from 'next/link';
-import { supabase } from '@/lib/supabase';
-import { getCurrentUser, signOut } from '@/lib/auth';
 
 interface Campaign {
   id: string;
@@ -28,7 +27,7 @@ interface GeneratedContent {
 
 export default function Dashboard() {
   const router = useRouter();
-  const [user, setUser] = useState<any>(null);
+  const { data: session, status } = useSession();
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [selectedCampaign, setSelectedCampaign] = useState<string | null>(null);
   const [content, setContent] = useState<GeneratedContent[]>([]);
@@ -39,9 +38,12 @@ export default function Dashboard() {
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
   useEffect(() => {
-    checkAuth();
-    loadCampaigns();
-  }, []);
+    if (status === 'unauthenticated') {
+      router.push('/auth');
+    } else if (status === 'authenticated') {
+      loadCampaigns();
+    }
+  }, [status, router]);
 
   useEffect(() => {
     if (selectedCampaign) {
@@ -49,28 +51,13 @@ export default function Dashboard() {
     }
   }, [selectedCampaign]);
 
-  async function checkAuth() {
-    try {
-      const currentUser = await getCurrentUser();
-      if (!currentUser) {
-        router.push('/auth');
-      } else {
-        setUser(currentUser);
-      }
-    } catch (error) {
-      router.push('/auth');
-    }
-  }
-
   async function loadCampaigns() {
     try {
-      const { data, error } = await supabase
-        .from('campaigns')
-        .select('*')
-        .order('created_at', { ascending: false });
+      const response = await fetch('/api/campaigns/list');
+      if (!response.ok) throw new Error('Failed to load campaigns');
 
-      if (error) throw error;
-      setCampaigns(data || []);
+      const data = await response.json();
+      setCampaigns(data.campaigns || []);
     } catch (error) {
       console.error('Error loading campaigns:', error);
     }
@@ -78,14 +65,11 @@ export default function Dashboard() {
 
   async function loadContent(campaignId: string) {
     try {
-      const { data, error } = await supabase
-        .from('generated_content')
-        .select('*')
-        .eq('campaign_id', campaignId)
-        .order('created_at', { ascending: false });
+      const response = await fetch(`/api/campaigns/${campaignId}/content`);
+      if (!response.ok) throw new Error('Failed to load content');
 
-      if (error) throw error;
-      setContent(data || []);
+      const data = await response.json();
+      setContent(data.content || []);
     } catch (error) {
       console.error('Error loading content:', error);
     }
@@ -96,7 +80,6 @@ export default function Dashboard() {
 
     setLoading(true);
     try {
-      // Create campaign
       const response = await fetch('/api/campaigns/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -124,14 +107,25 @@ export default function Dashboard() {
   }
 
   async function handleLogout() {
-    await signOut();
-    router.push('/');
+    await signOut({ callbackUrl: '/' });
   }
 
   function copyToClipboard(text: string, id: string) {
     navigator.clipboard.writeText(text);
     setCopiedId(id);
     setTimeout(() => setCopiedId(null), 2000);
+  }
+
+  if (status === 'loading') {
+    return (
+      <div className="min-h-screen bg-luxury-black flex items-center justify-center">
+        <div className="text-xl text-gray-400">Loading...</div>
+      </div>
+    );
+  }
+
+  if (status === 'unauthenticated') {
+    return null;
   }
 
   return (
@@ -145,7 +139,7 @@ export default function Dashboard() {
           </Link>
           <div className="flex items-center space-x-6">
             <div className="text-sm text-gray-400">
-              {user?.email}
+              {session?.user?.email}
             </div>
             <button onClick={handleLogout} className="btn-secondary">
               Sign Out

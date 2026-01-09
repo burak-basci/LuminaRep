@@ -24,111 +24,168 @@ No copywriter needed. No manual work. Just paste your Google Business URL and le
 
 ### Core Functionality
 - ✅ **One-Click Review Import** - Paste Google Business URL, extract 5-star reviews automatically
-- ✅ **AI-Powered Content Generation** - Gemini-powered copywriting for luxury aesthetics brands
-- ✅ **Campaign Management** - Organize and track all your content campaigns in one dashboard
-- ✅ **Copy-to-Clipboard Assets** - One click to copy any caption, script, or prompt
-- ✅ **Unlimited Generation** - No limits on campaigns or content creation
+- ✅ **AI-Powered Content Generation** - Powered by Google Gemini:
+  - 3 variations of luxury Instagram captions
+  - TikTok/Reels video scripts with visual cues
+  - Custom image generation prompts for DALL-E/Midjourney
+- ✅ **Campaign Management Dashboard** - Full-featured interface with copy-to-clipboard
+- ✅ **User Authentication** - Secure email/password via NextAuth
+- ✅ **Stripe Subscriptions** - $99/month with 7-day free trial
+- ✅ **Luxury Dark Mode UI** - Emerald & Gold accent colors, professional B2B design
 
 ### Technical Stack
 - **Framework:** Next.js 15 (App Router) with TypeScript
-- **Styling:** Tailwind CSS (Luxury Dark Mode)
-- **Database:** Supabase (PostgreSQL + Auth)
+- **Database:** PostgreSQL (self-hosted via Docker)
+- **Authentication:** NextAuth.js
 - **AI Engine:** Google Gemini Pro
 - **Payments:** Stripe (Subscriptions + Webhooks)
-- **Deployment:** Vercel-ready
+- **Styling:** Tailwind CSS with custom design system
+- **Deployment:** Docker Compose (fully self-hosted)
 
 ---
 
 ## 📋 Prerequisites
 
-Before you begin, ensure you have:
-
-- **Node.js** 18+ and npm
-- **Supabase Account** (free tier works)
+- **Docker & Docker Compose** installed
+- **Node.js 18+** and npm (for local development)
 - **Google Gemini API Key** (free tier available)
-- **Stripe Account** (test mode for development)
+- **Stripe Account** (for payments - optional)
 
 ---
 
-## 🛠️ Installation & Setup
+## 🛠️ Quick Start (Docker - Recommended)
 
-### 1. Clone and Install
-
-```bash
-# You're already in the project directory
-npm install
-```
-
-### 2. Set Up Supabase
-
-1. Create a new project at [supabase.com](https://supabase.com)
-2. Copy your project URL and anon key
-3. Run the database schema:
-   - Go to SQL Editor in Supabase Dashboard
-   - Copy the contents of `supabase-schema.sql`
-   - Execute the SQL
-4. Enable Email Auth:
-   - Go to Authentication > Providers
-   - Enable Email provider
-   - Configure email templates (optional)
-
-### 3. Get Google Gemini API Key
-
-1. Visit [ai.google.dev](https://ai.google.dev)
-2. Click "Get API Key"
-3. Create a new API key
-4. Copy the key
-
-### 4. Set Up Stripe
-
-1. Create account at [stripe.com](https://stripe.com)
-2. Get your API keys from Dashboard > Developers > API keys
-3. Create a product:
-   - Products > Add Product
-   - Name: "LuminaRep Professional"
-   - Price: $99/month (recurring)
-   - Copy the Price ID
-4. Set up webhook endpoint (after deployment):
-   - Developers > Webhooks > Add endpoint
-   - URL: `https://yourdomain.com/api/stripe/webhook`
-   - Events: `checkout.session.completed`, `customer.subscription.updated`, `customer.subscription.deleted`, `invoice.payment_failed`
-
-### 5. Configure Environment Variables
-
-Create a `.env.local` file in the root directory:
+### 1. Clone the Repository
 
 ```bash
-cp .env.example .env.local
+git clone https://github.com/yourusername/luminarep.git
+cd luminarep
 ```
 
-Edit `.env.local` with your actual keys:
+### 2. Configure Environment
 
+```bash
+# Copy environment template
+cp .env.example .env
+
+# Generate NextAuth secret
+openssl rand -base64 32
+
+# Edit .env with your values
+nano .env
+```
+
+**Required variables:**
 ```env
-# Supabase
-NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key_here
-SUPABASE_SERVICE_ROLE_KEY=your_service_role_key_here
-
-# Google Gemini
-GEMINI_API_KEY=your_gemini_api_key_here
-
-# Stripe
-NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_...
-STRIPE_SECRET_KEY=sk_test_...
-STRIPE_WEBHOOK_SECRET=whsec_...
-STRIPE_PRICE_ID=price_...
-
-# App
+POSTGRES_PASSWORD=your_secure_password
+NEXTAUTH_SECRET=your_generated_secret_here
+GEMINI_API_KEY=your_gemini_api_key
+NEXTAUTH_URL=http://localhost:3000
 NEXT_PUBLIC_APP_URL=http://localhost:3000
 ```
 
-### 6. Run Development Server
+### 3. Launch with Docker
+
+```bash
+# Start all services
+docker compose up -d
+
+# View logs
+docker compose logs -f
+
+# Check status
+docker compose ps
+```
+
+**That's it!** Visit [http://localhost:3000](http://localhost:3000)
+
+---
+
+## 💻 Local Development (Without Docker)
+
+### 1. Install Dependencies
+
+```bash
+npm install
+```
+
+### 2. Set Up PostgreSQL
+
+You need a PostgreSQL database. Either:
+
+**Option A: Use Docker for DB only**
+```bash
+docker run -d \
+  --name luminarep-postgres \
+  -e POSTGRES_DB=luminarep \
+  -e POSTGRES_USER=luminarep \
+  -e POSTGRES_PASSWORD=changeme \
+  -p 5432:5432 \
+  postgres:16-alpine
+```
+
+**Option B: Install PostgreSQL locally**
+```bash
+# On Ubuntu/Debian
+sudo apt-get install postgresql
+
+# Create database
+sudo -u postgres createdb luminarep
+sudo -u postgres createuser luminarep
+```
+
+### 3. Run Database Schema
+
+```bash
+# Connect to PostgreSQL
+psql -U luminarep -d luminarep < schema.sql
+```
+
+### 4. Configure Environment
+
+```bash
+cp .env.example .env.local
+
+# Edit with your values
+nano .env.local
+```
+
+```env
+DATABASE_URL=postgresql://luminarep:changeme@localhost:5432/luminarep
+NEXTAUTH_SECRET=your_secret_here
+GEMINI_API_KEY=your_gemini_key
+NEXTAUTH_URL=http://localhost:3000
+NEXT_PUBLIC_APP_URL=http://localhost:3000
+```
+
+### 5. Run Development Server
 
 ```bash
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) to see your app.
+Open [http://localhost:3000](http://localhost:3000)
+
+---
+
+## 🌐 Production Deployment
+
+### Self-Hosted with Docker
+
+See **[DOCKER-DEPLOY.md](./DOCKER-DEPLOY.md)** for complete production deployment guide including:
+- Setting up your server
+- Configuring your domain
+- HTTPS with Nginx/Caddy
+- Database backups
+- Monitoring
+
+**Key Steps:**
+1. Get a VPS (DigitalOcean, Hetzner, Linode - $5-10/month)
+2. Point your domain to the server
+3. Clone repo and configure `.env`
+4. Run `docker compose up -d`
+5. Set up Nginx/Caddy for HTTPS
+6. Configure Stripe webhooks
 
 ---
 
@@ -138,21 +195,24 @@ Open [http://localhost:3000](http://localhost:3000) to see your app.
 LuminaRep/
 ├── app/
 │   ├── api/
-│   │   ├── campaigns/create/    # Campaign creation endpoint
-│   │   └── stripe/              # Stripe integration
-│   ├── auth/                    # Authentication pages
-│   ├── dashboard/               # Main dashboard
-│   ├── layout.tsx               # Root layout
-│   ├── page.tsx                 # Landing page
-│   └── globals.css              # Global styles
-├── components/                  # Reusable components
+│   │   ├── auth/              # NextAuth + signup
+│   │   ├── campaigns/          # Campaign management
+│   │   ├── stripe/             # Payment integration
+│   │   └── health/             # Health check
+│   ├── auth/                   # Authentication pages
+│   ├── dashboard/              # Main dashboard
+│   ├── layout.tsx              # Root layout
+│   ├── page.tsx                # Landing page
+│   └── globals.css             # Global styles
 ├── lib/
-│   ├── auth.ts                  # Supabase auth utilities
+│   ├── db.ts                   # PostgreSQL client
+│   ├── auth-helpers.ts         # Auth utilities
 │   ├── content-generator.ts    # Gemini AI integration
 │   ├── review-scraper.ts       # Google review scraper
-│   ├── stripe.ts               # Stripe utilities
-│   └── supabase.ts             # Supabase client
-├── supabase-schema.sql         # Database schema
+│   └── stripe.ts               # Stripe utilities
+├── docker-compose.yml          # Docker orchestration
+├── Dockerfile                  # App container
+├── schema.sql                  # Database schema
 ├── .env.example                # Environment template
 └── README.md                   # You are here
 ```
@@ -195,24 +255,30 @@ Update Stripe product and modify:
 
 ---
 
-## 🚢 Deployment
+## 🧪 Testing
 
-### Deploy to Vercel (Recommended)
+### Test Authentication
+```bash
+1. Visit http://localhost:3000/auth
+2. Sign up with a test email
+3. Check PostgreSQL for new user
+```
 
-1. Push your code to GitHub
-2. Visit [vercel.com](https://vercel.com)
-3. Import your repository
-4. Add all environment variables from `.env.local`
-5. Deploy
+### Test Campaign Creation
+```bash
+1. Sign in to dashboard
+2. Click "New Campaign"
+3. Enter any Google Maps URL (uses demo data)
+4. Wait for content generation
+5. View generated captions, scripts, and prompts
+```
 
-Your app will be live at `https://your-app.vercel.app`
-
-### Post-Deployment
-
-1. Update `NEXT_PUBLIC_APP_URL` in environment variables
-2. Configure Stripe webhook with your production URL
-3. Test the complete flow with Stripe test mode
-4. Switch to Stripe live mode when ready
+### Test Stripe (Optional)
+```bash
+1. Add Stripe keys to .env
+2. Use test card: 4242 4242 4242 4242
+3. Any future expiry date and CVC
+```
 
 ---
 
@@ -232,68 +298,61 @@ The current implementation uses **demo data**. For production:
    - Add `SERPAPI_KEY` to environment variables
    - Test with real Google Business URLs
 
-### Rate Limiting
-
-Consider adding rate limiting for:
-- Campaign creation (e.g., 5 per hour)
-- API endpoints (use Vercel's built-in protection)
-
 ### Monitoring
 
-Set up error tracking:
-- [Sentry](https://sentry.io) for error monitoring
-- Vercel Analytics for performance
-- Stripe Dashboard for payment monitoring
+- **Health endpoint:** `GET /api/health`
+- **Docker stats:** `docker stats`
+- **Logs:** `docker compose logs -f`
+- Consider adding Sentry for error tracking
 
 ---
 
-## 🧪 Testing
+## 💰 Cost Comparison
 
-### Test Authentication
-```bash
-1. Visit http://localhost:3000/auth
-2. Sign up with a test email
-3. Check Supabase dashboard for new user
-```
+### Self-Hosted (This Setup)
+- **VPS (2-4GB RAM):** $5-10/month
+- **Domain:** $10-15/year
+- **Gemini API:** Free tier or pay-as-you-go
+- **Total:** ~$60-120/year
 
-### Test Campaign Creation
-```bash
-1. Sign in to dashboard
-2. Click "New Campaign"
-3. Enter any Google Maps URL (uses demo data)
-4. Wait for content generation
-5. View generated captions, scripts, and prompts
-```
+### Cloud SaaS (Vercel + Supabase)
+- **Vercel Pro:** $20/month
+- **Supabase Pro:** $25/month
+- **Total:** ~$540/year
 
-### Test Stripe (Optional)
-```bash
-1. Add Stripe keys to .env.local
-2. Use test card: 4242 4242 4242 4242
-3. Any future expiry date and CVC
-```
+**You save $400-480/year by self-hosting!**
 
 ---
 
 ## 🐛 Troubleshooting
 
-### "Cannot find module @google/generative-ai"
+### Database Connection Errors
 ```bash
-npm install @google/generative-ai
+# Check if postgres is running
+docker compose ps postgres
+
+# View logs
+docker compose logs postgres
+
+# Test connection
+docker compose exec postgres psql -U luminarep -d luminarep -c "SELECT 1"
 ```
 
-### Supabase Auth Errors
-- Verify your Supabase URL and keys
-- Check that email provider is enabled
-- Run the SQL schema again
+### App Won't Start
+```bash
+# Rebuild from scratch
+docker compose down
+docker compose build --no-cache
+docker compose up -d
+```
 
-### Stripe Webhook Not Working
-- Use Stripe CLI for local testing: `stripe listen --forward-to localhost:3000/api/stripe/webhook`
-- Verify webhook secret matches `.env.local`
+### Port Already in Use
+```bash
+# Find what's using port 3000
+sudo lsof -i :3000
 
-### Content Generation Fails
-- Check Gemini API key is valid
-- Verify API quota (free tier has limits)
-- Check console for error messages
+# Or change port in docker-compose.yml
+```
 
 ---
 
@@ -306,8 +365,8 @@ This is a proprietary SaaS product. All rights reserved.
 ## 🤝 Support
 
 For issues or questions:
-- Check the troubleshooting section above
-- Review Supabase/Stripe documentation
+- Check [DOCKER-DEPLOY.md](./DOCKER-DEPLOY.md) for deployment help
+- Review the troubleshooting section above
 - Verify all environment variables are set correctly
 
 ---
@@ -324,4 +383,6 @@ Future enhancements:
 
 ---
 
-**Built with ❤️ for medical aesthetics professionals who refuse to let their reputation go to waste.**
+**Built for medical aesthetics professionals who refuse to let their reputation go to waste.**
+
+**Fully self-hosted. No vendor lock-in. Complete control.**

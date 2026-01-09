@@ -1,16 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { createCheckoutSession } from '@/lib/stripe';
 
 export async function POST(request: NextRequest) {
   try {
-    // Get current user
-    const authHeader = request.headers.get('authorization');
-    const token = authHeader?.replace('Bearer ', '');
+    // Get session
+    const session = await getServerSession(authOptions);
 
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
-
-    if (authError || !user) {
+    if (!session?.user?.id || !session?.user?.email) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
@@ -18,9 +16,12 @@ export async function POST(request: NextRequest) {
     }
 
     // Create Stripe checkout session
-    const session = await createCheckoutSession(user.id, user.email || '');
+    const checkoutSession = await createCheckoutSession(
+      session.user.id,
+      session.user.email
+    );
 
-    return NextResponse.json({ url: session.url });
+    return NextResponse.json({ url: checkoutSession.url });
 
   } catch (error: any) {
     console.error('Checkout error:', error);

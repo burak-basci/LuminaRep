@@ -1,10 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/app/api/auth/[...nextauth]/route';
+import { query, queryOne } from '@/lib/db';
 import { scrapeGoogleReviews } from '@/lib/review-scraper';
 import { generateMarketingAssets } from '@/lib/content-generator';
 
 export async function POST(request: NextRequest) {
   try {
+    // Get session
+    const session = await getServerSession(authOptions);
+
+    if (!session?.user?.id) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+
     // Get request body
     const { name, googleBusinessUrl } = await request.json();
 
@@ -15,34 +27,19 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get current user from Supabase auth
-    const authHeader = request.headers.get('authorization');
-    const token = authHeader?.replace('Bearer ', '');
+    // Create campaign
+    const campaign = await queryOne<{ id: string }>(
+      `INSERT INTO campaigns (user_id, name, google_business_url, status)
+       VALUES ($1, $2, $3, 'processing')
+       RETURNING id`,
+      [session.user.id, name, googleBusinessUrl]
+    );
 
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
-
-    if (authError || !user) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
+    if (!campaign) {
+      throw new Error('Failed to create campaign');
     }
 
-    // Create campaign
-    const { data: campaign, error: campaignError } = await supabase
-      .from('campaigns')
-      .insert({
-        user_id: user.id,
-        name,
-        google_business_url: googleBusinessUrl,
-        status: 'processing',
-      })
-      .select()
-      .single();
-
-    if (campaignError) throw campaignError;
-
-    // Scrape reviews in the background
+    // Scrape and generate content in the background
     scrapeAndGenerateContent(campaign.id, googleBusinessUrl);
 
     return NextResponse.json({
@@ -69,10 +66,10 @@ async function scrapeAndGenerateContent(campaignId: string, googleBusinessUrl: s
     const scraperResult = await scrapeGoogleReviews(googleBusinessUrl);
 
     if (!scraperResult.success || scraperResult.reviews.length === 0) {
-      await supabase
-        .from('campaigns')
-        .update({ status: 'failed' })
-        .eq('id', campaignId);
+      await query(
+        `UPDATE campaigns SET status = 'failed' WHERE id = $1`,
+        [campaignId]
+      );
       return;
     }
 
@@ -82,17 +79,20 @@ async function scrapeAndGenerateContent(campaignId: string, googleBusinessUrl: s
         const assets = await generateMarketingAssets(review.text);
 
         // Save generated content
-        await supabase
-          .from('generated_content')
-          .insert({
-            campaign_id: campaignId,
-            review_text: review.text,
-            caption_1: assets.captions[0],
-            caption_2: assets.captions[1],
-            caption_3: assets.captions[2],
-            video_script: assets.videoScript,
-            image_prompt: assets.imagePrompt,
-          });
+        await query(
+          `INSERT INTO generated_content
+           (campaign_id, review_text, caption_1, caption_2, caption_3, video_script, image_prompt)
+           VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+          [
+            campaignId,
+            review.text,
+            assets.captions[0],
+            assets.captions[1],
+            assets.captions[2],
+            assets.videoScript,
+            assets.imagePrompt,
+          ]
+        );
 
       } catch (error) {
         console.error('Error generating content for review:', error);
@@ -101,16 +101,16 @@ async function scrapeAndGenerateContent(campaignId: string, googleBusinessUrl: s
     }
 
     // Step 3: Mark campaign as completed
-    await supabase
-      .from('campaigns')
-      .update({ status: 'completed' })
-      .eq('id', campaignId);
+    await query(
+      `UPDATE campaigns SET status = 'completed' WHERE id = $1`,
+      [campaignId]
+    );
 
   } catch (error) {
     console.error('Background processing error:', error);
-    await supabase
-      .from('campaigns')
-      .update({ status: 'failed' })
-      .eq('id', campaignId);
+    await query(
+      `UPDATE campaigns SET status = 'failed' WHERE id = $1`,
+      [campaignId]
+    );
   }
 }

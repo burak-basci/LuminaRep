@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { stripe } from '@/lib/stripe';
-import { supabase } from '@/lib/supabase';
+import { query } from '@/lib/db';
 import Stripe from 'stripe';
 
 export async function POST(request: NextRequest) {
@@ -75,14 +75,12 @@ async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
 
   if (!userId) return;
 
-  await supabase
-    .from('users')
-    .update({
-      stripe_customer_id: customerId,
-      subscription_id: subscriptionId,
-      subscription_status: 'active',
-    })
-    .eq('id', userId);
+  await query(
+    `UPDATE users
+     SET stripe_customer_id = $1, subscription_id = $2, subscription_status = 'active'
+     WHERE id = $3`,
+    [customerId, subscriptionId, userId]
+  );
 }
 
 async function handleSubscriptionUpdate(subscription: Stripe.Subscription) {
@@ -98,33 +96,32 @@ async function handleSubscriptionUpdate(subscription: Stripe.Subscription) {
     status = 'cancelled';
   }
 
-  await supabase
-    .from('users')
-    .update({
-      subscription_status: status,
-      subscription_id: subscription.id,
-    })
-    .eq('stripe_customer_id', customerId);
+  await query(
+    `UPDATE users
+     SET subscription_status = $1, subscription_id = $2
+     WHERE stripe_customer_id = $3`,
+    [status, subscription.id, customerId]
+  );
 }
 
 async function handleSubscriptionCancelled(subscription: Stripe.Subscription) {
   const customerId = subscription.customer as string;
 
-  await supabase
-    .from('users')
-    .update({
-      subscription_status: 'cancelled',
-    })
-    .eq('stripe_customer_id', customerId);
+  await query(
+    `UPDATE users
+     SET subscription_status = 'cancelled'
+     WHERE stripe_customer_id = $1`,
+    [customerId]
+  );
 }
 
 async function handlePaymentFailed(invoice: Stripe.Invoice) {
   const customerId = invoice.customer as string;
 
-  await supabase
-    .from('users')
-    .update({
-      subscription_status: 'past_due',
-    })
-    .eq('stripe_customer_id', customerId);
+  await query(
+    `UPDATE users
+     SET subscription_status = 'past_due'
+     WHERE stripe_customer_id = $1`,
+    [customerId]
+  );
 }
