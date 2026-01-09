@@ -1,0 +1,77 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    @apply border-luxury-border;
+  }
+
+  body {
+    @apply bg-luxury-black text-foreground font-sans antialiased;
+  }
+}
+
+@layer components {
+  /* Button Styles */
+  .btn-primary {
+    @apply px-6 py-3 bg-primary text-white rounded-lg font-semibold
+           hover:bg-primary-dark transition-all duration-300
+           shadow-lg shadow-primary/20 hover:shadow-xl hover:shadow-primary/30;
+  }
+
+  .btn-accent {
+    @apply px-6 py-3 bg-accent text-luxury-black rounded-lg font-semibold
+           hover:bg-accent-dark transition-all duration-300
+           shadow-lg shadow-accent/20 hover:shadow-xl hover:shadow-accent/30;
+  }
+
+  .btn-secondary {
+    @apply px-6 py-3 bg-luxury-gray-light text-foreground rounded-lg font-semibold
+           hover:bg-luxury-border transition-all duration-300
+           border border-luxury-border;
+  }
+
+  /* Card Styles */
+  .card {
+    @apply bg-luxury-gray rounded-xl border border-luxury-border
+           shadow-xl shadow-black/20 p-6;
+  }
+
+  .card-hover {
+    @apply card hover:border-primary/50 transition-all duration-300
+           hover:shadow-2xl hover:shadow-primary/10;
+  }
+
+  /* Input Styles */
+  .input {
+    @apply w-full px-4 py-3 bg-luxury-gray-light border border-luxury-border
+           rounded-lg text-foreground placeholder-gray-500
+           focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20
+           transition-all duration-300;
+  }
+
+  /* Container */
+  .container-luxury {
+    @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
+  }
+
+  /* Gradient Text */
+  .gradient-text {
+    @apply bg-gradient-to-r from-primary via-accent to-primary-light
+           bg-clip-text text-transparent;
+  }
+
+  /* Section */
+  .section {
+    @apply py-20;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+}
